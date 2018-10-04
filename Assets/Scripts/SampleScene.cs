@@ -1,6 +1,7 @@
 ﻿using InteractiveMusic;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 public class SampleScene : MonoBehaviour {
@@ -23,6 +24,11 @@ public class SampleScene : MonoBehaviour {
     public void Start()
     {
         InteractiveLoopManager.Instance.Source = this.audioSource;
+    }
+
+    public void OnDestroy()
+    {
+        InteractiveLoopManager.Instance.Dispose();
     }
 
     public void OnClick(int id)
