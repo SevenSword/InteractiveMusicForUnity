@@ -11,7 +11,7 @@ public class SampleScene : MonoBehaviour {
 
     enum LoopType
     {
-        AllLoop,
+        AllLoop = -1,
         Intro1,
         Intro2,
         Verse1_1,
@@ -24,6 +24,17 @@ public class SampleScene : MonoBehaviour {
     public void Start()
     {
         InteractiveLoopManager.Instance.Source = this.audioSource;
+
+        // ループデータ設定
+        InteractiveLoopManager.Instance.SetupLoopData(new [] {
+            new InteractiveLoopManager.LoopData(0.0f, 14.45f),
+            new InteractiveLoopManager.LoopData(14.45f, 29.073f),
+            new InteractiveLoopManager.LoopData(29.073f, 43.524f),
+            new InteractiveLoopManager.LoopData(43.524f, 58.1476f),
+            new InteractiveLoopManager.LoopData(58.1476f, 72.4046f),
+            new InteractiveLoopManager.LoopData(72.6046f, 87.2216f),
+            new InteractiveLoopManager.LoopData(87.2216f, 101.691f)
+        });
     }
 
     public void OnDestroy()
@@ -36,13 +47,7 @@ public class SampleScene : MonoBehaviour {
         var type = (LoopType)id;
         Debug.LogFormat("LoopType: {0}", type);
 
-        if (type == LoopType.AllLoop)
-        {
-
-        }
-        else
-        {
-        }
+        InteractiveLoopManager.Instance.ChangeLoop(id);
 
         InteractiveLoopManager.Instance.Play();
     }
