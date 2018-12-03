@@ -26,6 +26,7 @@ public class SampleScene : MonoBehaviour {
     public void OnChangeBGM(int id)
     {
         InteractiveLoopManager.Instance.Source = this.audioSource[id];
+        Debug.Log(this.audioSource[id].clip.length);
         InteractiveLoopManager.Instance.SetupSuperLoopData(SampleLoopData.SuperSample(id));
     }
 
@@ -39,5 +40,10 @@ public class SampleScene : MonoBehaviour {
         {
             InteractiveLoopManager.Instance.ChangeLoop(id);
         }
+    }
+
+    public void OnStop()
+    {
+        InteractiveLoopManager.Instance.Stop();
     }
 }
