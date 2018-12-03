@@ -112,6 +112,47 @@ class SampleLoopData
 
     public static InteractiveLoopManager.SuperLoopData[][] SuperSampleTwo()
     {
-        return null;
+        InteractiveLoopManager.SuperLoopData[] loop_one = {
+            new InteractiveLoopManager.SuperLoopData(0, 3.724f, 16.965f, 0.0f, 0.0f, 0.0f, false),
+
+            new InteractiveLoopManager.SuperLoopData(1, 3.724f, 16.965f, 16.965f, 20.275f, 20.275f, true),
+        };
+
+        InteractiveLoopManager.SuperLoopData[] loop_two = {
+            new InteractiveLoopManager.SuperLoopData(1, 20.275f, 33.517f, 0.0f, 0.0f, 0.0f, false),
+
+            new InteractiveLoopManager.SuperLoopData(2, 20.275f, 33.517f, 33.517f, 33.517f, 33.517f, true),
+        };
+
+        InteractiveLoopManager.SuperLoopData[] loop_three = {
+            new InteractiveLoopManager.SuperLoopData(2, 33.517f, 46.758f, 0.0f, 0.0f, 0.0f, false),
+
+            new InteractiveLoopManager.SuperLoopData(3, 33.517f, 46.758f, 46.758f, 50.068f, 50.068f, true),
+        };
+
+        InteractiveLoopManager.SuperLoopData[] loop_four = {
+            new InteractiveLoopManager.SuperLoopData(3, 50.068f, 63.310f, 0.0f, 0.0f, 0.0f, false),
+
+            new InteractiveLoopManager.SuperLoopData(4, 50.068f, 63.310f, 63.310f, 66.620f, 66.620f, true),
+        };
+
+        InteractiveLoopManager.SuperLoopData[] loop_five = {
+            new InteractiveLoopManager.SuperLoopData(4, 66.620f, 79.862f, 0.0f, 0.0f, 0.0f, false),
+
+            new InteractiveLoopManager.SuperLoopData(5, 66.620f, 79.862f, 79.862f, 83.172f, 83.172f, true),
+        };
+
+        InteractiveLoopManager.SuperLoopData[] loop_six = {
+            new InteractiveLoopManager.SuperLoopData(5, 83.172f, 137.3793f, 0.0f, 0.0f, 0.0f, false),
+        };
+
+        return new InteractiveLoopManager.SuperLoopData[][]{
+            loop_one,
+            loop_two,
+            loop_three,
+            loop_four,
+            loop_five,
+            loop_six
+        };
     }
 }
