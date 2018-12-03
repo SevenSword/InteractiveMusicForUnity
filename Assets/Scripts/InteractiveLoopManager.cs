@@ -53,6 +53,7 @@ namespace InteractiveMusic
         private SuperLoopData? tempSuperLoopData = null;
         private SuperLoopData normalLoopData;
         private List<SuperLoopData> normalLoopList = new List<SuperLoopData>();
+        private bool needOneLoop = false;
 
         public void Dispose()
         {
@@ -130,7 +131,7 @@ namespace InteractiveMusic
                         Debug.LogFormat("Change: {0} -> {1}", this.currentLoopId, this.nextLoopId);
                         Debug.LogFormat("NowTime: {0}", this.Source.time);
                         var superLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
-                                                                                        .Where(x => x.StartTimeFromLoop <= this.Source.time && this.Source.time <= x.EndTimeFromLoop);
+                                                                                       .Where(x => x.StartTimeFromLoop <= this.Source.time && this.Source.time <= x.EndTimeFromLoop);
                         if (superLoopDatas.Any())
                         {
                             Assert.IsFalse(superLoopDatas.Count() != 1, superLoopDatas.Count().ToString());
@@ -141,8 +142,53 @@ namespace InteractiveMusic
                         }
                         else
                         {
-                            Debug.LogWarning("NotFound LoopData!!");
-                            this.nextLoopId = this.currentLoopId;
+                            // 見つからなかったので、データの抜け。その場合は近傍捜索
+                            // WIP: STFL〜ETFLのどちらに近いかを見て、近い方の値を利用→データの近傍を取得していないため抜けを参照する可能性がまだある
+                            float vicinityTime1 = 0.0f;
+                            float vicinityTime2 = 0.0f;
+                            if ((this.normalLoopData.EndTimeFromLoop - this.normalLoopData.StartTimeFromLoop / 2) - this.Source.time >= 0.0f)
+                            {
+                                vicinityTime1 = this.normalLoopData.StartTimeFromLoop;
+                                vicinityTime2 = this.normalLoopData.EndTimeFromLoop;
+                            }
+                            else
+                            {
+                                vicinityTime1 = this.normalLoopData.EndTimeFromLoop;
+                                vicinityTime2 = this.normalLoopData.StartTimeFromLoop;
+                                this.needOneLoop = true;
+                            }
+
+                            IEnumerable<SuperLoopData> vicinityLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
+                                                                                                                     .Where(x => x.StartTimeFromLoop <= vicinityTime1 && vicinityTime1 <= x.EndTimeFromLoop);
+                            if (vicinityLoopDatas.Any())
+                            {
+                                Assert.IsFalse(vicinityLoopDatas.Count() != 1, vicinityLoopDatas.Count().ToString());
+                                var superLoopData = vicinityLoopDatas.FirstOrDefault();
+                                this.tempSuperLoopData = superLoopData;
+                                this.needOneLoop = false;
+                                this.duringTrans = true;
+                                this.currentLoopId = this.nextLoopId;
+                            }
+                            else
+                            {
+                                // 第一近傍に見つからなかったので、第二
+                                vicinityLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
+                                                                                              .Where(x => x.StartTimeFromLoop <= vicinityTime2 && vicinityTime2 <= x.EndTimeFromLoop);
+                                if (vicinityLoopDatas.Any())
+                                {
+                                    Assert.IsFalse(vicinityLoopDatas.Count() != 1, vicinityLoopDatas.Count().ToString());
+                                    var superLoopData = vicinityLoopDatas.FirstOrDefault();
+                                    this.tempSuperLoopData = superLoopData;
+                                    this.duringTrans = true;
+                                    this.currentLoopId = this.nextLoopId;
+                                }
+                                else
+                                {
+                                    // 近傍データ見つからず
+                                    Debug.LogWarning("NotFound LoopData!!");
+                                    this.nextLoopId = this.currentLoopId;
+                                }
+                            }
                         }
                     }
                     else
@@ -161,9 +207,20 @@ namespace InteractiveMusic
                     Assert.IsTrue(this.tempSuperLoopData.HasValue);
                     if (this.Source.time >= this.tempSuperLoopData.Value.EndTimeFromLoop)
                     {
-                        this.duringTrans = false;
-                        this.isTransPart = true;
-                        this.Source.time = this.tempSuperLoopData.Value.StartTimeAtTarnsPart;
+                        if (!this.needOneLoop)
+                        {
+                            this.duringTrans = false;
+                            this.isTransPart = true;
+                            this.Source.time = this.tempSuperLoopData.Value.StartTimeAtTarnsPart;
+                        }
+                        else
+                        {
+                            if (this.Source.time >= this.normalLoopData.EndTimeFromLoop)
+                            {
+                                this.Source.time = this.normalLoopData.StartTimeFromLoop;
+                                this.needOneLoop = false;
+                            }
+                        }
                     }
                 }
 
