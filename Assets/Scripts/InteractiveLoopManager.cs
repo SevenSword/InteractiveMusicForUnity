@@ -81,6 +81,9 @@ namespace InteractiveMusic
         public void Stop()
         {
             this.isPlaying = false;
+            this.currentLoopId = 0;
+            this.nextLoopId = 0;
+            this.Source.time = 0.0f;
         }
 
         public void SetupSuperLoopData(SuperLoopData[][] superLoopDataArray)
@@ -95,6 +98,7 @@ namespace InteractiveMusic
                                                         .Where(v => !v.hasTransPart)
                                                         .ToList();
             Debug.Log(this.normalLoopList.Count());
+            Debug.LogFormat("STFL: {0} ETFL: {1}", this.normalLoopData.StartTimeFromLoop, this.normalLoopData.EndTimeFromLoop);
         }
 
         public void ChangeLoop(int loopId)
