@@ -108,7 +108,14 @@ namespace InteractiveMusic
         public void ChangeLoop(int loopId)
         {
             Assert.IsTrue(loopId >= -1);
-            this.nextLoopId = loopId;
+            if (!this.duringTrans && !this.isTransPart)
+            {
+                this.nextLoopId = loopId;
+            }
+            else
+            {
+                Debug.LogWarning("Duraing!!");
+            }
         }
 
         private async Task CheckLoop()
