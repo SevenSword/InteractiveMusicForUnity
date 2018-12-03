@@ -35,7 +35,6 @@ namespace InteractiveMusic
         }
 
         private bool isPlaying = false;
-        private bool isDisposed = false;
         private int nextLoopId = -1;
         private int currentLoopId = -1;
 
@@ -58,7 +57,6 @@ namespace InteractiveMusic
         public void Dispose()
         {
             this.Stop();
-            this.isDisposed = true;
         }
 
         public void Play()
@@ -83,7 +81,12 @@ namespace InteractiveMusic
             this.isPlaying = false;
             this.currentLoopId = 0;
             this.nextLoopId = 0;
-            this.Source.time = 0.0f;
+
+            if (this.Source != null)
+            {
+                this.Source.Stop();
+                this.Source.time = 0.0f;
+            }
         }
 
         public void SetupSuperLoopData(SuperLoopData[][] superLoopDataArray)
@@ -128,12 +131,19 @@ namespace InteractiveMusic
                         Debug.LogFormat("NowTime: {0}", this.Source.time);
                         var superLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
                                                                                         .Where(x => x.StartTimeFromLoop <= this.Source.time && this.Source.time <= x.EndTimeFromLoop);
-                        Assert.IsTrue(superLoopDatas.Any());
-                        Assert.IsFalse(superLoopDatas.Count() != 1, superLoopDatas.Count().ToString());
-                        var superLoopData = superLoopDatas.FirstOrDefault();
-                        this.tempSuperLoopData = superLoopData;
-                        this.duringTrans = true;
-                        this.currentLoopId = this.nextLoopId;
+                        if (superLoopDatas.Any())
+                        {
+                            Assert.IsFalse(superLoopDatas.Count() != 1, superLoopDatas.Count().ToString());
+                            var superLoopData = superLoopDatas.FirstOrDefault();
+                            this.tempSuperLoopData = superLoopData;
+                            this.duringTrans = true;
+                            this.currentLoopId = this.nextLoopId;
+                        }
+                        else
+                        {
+                            Debug.LogWarning("NotFound LoopData!!");
+                            this.nextLoopId = this.currentLoopId;
+                        }
                     }
                     else
                     {
@@ -171,12 +181,6 @@ namespace InteractiveMusic
                 }
 
                 await Task.Yield();
-            }
-
-            this.Source.Stop();
-            if (this.isDisposed)
-            {
-                this.Source = null;
             }
         }
 
