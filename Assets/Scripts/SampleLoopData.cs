@@ -2,6 +2,16 @@ using InteractiveMusic;
 
 class SampleLoopData
 {
+    public static InteractiveLoopManager.SuperLoopData[][] SuperSample(int id)
+    {
+        if (id == 0)
+            return SuperSampleOne();
+        
+        if (id == 1)
+            return SuperSampleTwo();
+
+        return null;
+    }
     public static InteractiveLoopManager.SuperLoopData[][] SuperSampleOne()
     {
         InteractiveLoopManager.SuperLoopData[] loop_one = {
