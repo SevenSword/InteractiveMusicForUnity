@@ -8,17 +8,84 @@ using UnityEngine.Assertions;
 
 namespace InteractiveMusic
 {
+    /// <summary>
+    /// インタラクティブルームマネージャー
+    /// </summary>
     public sealed class InteractiveLoopManager : IDisposable
     {
-        public static InteractiveLoopManager Instance { get; } = new InteractiveLoopManager();
+        /// <summary>
+        /// 再生中フラグ
+        /// </summary>
+        private bool isPlaying = false;
 
+        /// <summary>
+        /// 次のループID
+        /// </summary>
+        private int nextLoopId = -1;
+
+        /// <summary>
+        /// 現在のループID
+        /// </summary>
+        private int currentLoopId = -1;
+
+        /// <summary>
+        /// ループデータの二次元配列
+        /// </summary>
+        /// <typeparam name="SuperLoopData[]">ループデータの配列</typeparam>
+        private List<SuperLoopData[]> superLoopDataList = new List<SuperLoopData[]>();
+
+        /// <summary>
+        /// 遷移中フラグ
+        /// </summary>
+        private bool duringTrans = false;
+
+        /// <summary>
+        /// 遷移パート中かどうか
+        /// </summary>
+        private bool isTransPart = false;
+
+        /// <summary>
+        /// 遷移に利用しているループデータの一時保存
+        /// </summary>
+        private SuperLoopData? tempSuperLoopData = null;
+
+        /// <summary>
+        /// 通常ループ用データ
+        /// </summary>
+        private SuperLoopData normalLoopData;
+
+        /// <summary>
+        /// 通常ループ用データリスト
+        /// </summary>
+        /// <typeparam name="SuperLoopData">ループデータ</typeparam>
+        private List<SuperLoopData> normalLoopList = new List<SuperLoopData>();
+
+        /// <summary>
+        /// 1ループ必要かどうか
+        /// </summary>
+        private bool needOneLoop = false;
+
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
         private InteractiveLoopManager()
         {
             // nop
         }
 
+        /// <summary>
+        /// シングルトンインスタンス
+        /// </summary>
+        public static InteractiveLoopManager Instance { get; } = new InteractiveLoopManager();
+
+        /// <summary>
+        /// オーディオソース
+        /// </summary>
         public AudioSource Source { private get; set; }
 
+        /// <summary>
+        /// 現在の再生時間
+        /// </summary>
         public float NowTime
         {
             get
@@ -34,32 +101,21 @@ namespace InteractiveMusic
             }
         }
 
-        private bool isPlaying = false;
-        private int nextLoopId = -1;
-        private int currentLoopId = -1;
-
-        private List<SuperLoopData[]> SuperLoopDataList = new List<SuperLoopData[]>();
-
         /// <summary>
-        /// 遷移中フラグ
+        /// デストラクタ
         /// </summary>
-        private bool duringTrans = false;
-
-        /// <summary>
-        /// 遷移パート中かどうか
-        /// </summary>
-        private bool isTransPart = false;
-
-        private SuperLoopData? tempSuperLoopData = null;
-        private SuperLoopData normalLoopData;
-        private List<SuperLoopData> normalLoopList = new List<SuperLoopData>();
-        private bool needOneLoop = false;
-
         public void Dispose()
         {
             this.Stop();
         }
 
+        /// <summary>
+        /// 状態を取得
+        /// </summary>
+        /// <param name="duringTrans">遷移中かどうか</param>
+        /// <param name="isTransPart">遷移パートかどうか</param>
+        /// <param name="nowLoopData">現在のループデータ</param>
+        /// <returns>再生中かどうか</returns>
         public bool GetStatus(out bool duringTrans, out bool isTransPart, out SuperLoopData nowLoopData)
         {
             if (!this.isPlaying)
@@ -93,6 +149,9 @@ namespace InteractiveMusic
             }
         }
 
+        /// <summary>
+        /// 再生
+        /// </summary>
         public void Play()
         {
             this.CheckRegisterSource();
@@ -104,12 +163,18 @@ namespace InteractiveMusic
             if (!beforeIsPlaying)
             {
                 this.ResetParam();
-                this.normalLoopData = normalLoopList[0];
+                this.normalLoopData = this.normalLoopList[0];
 
-                this.CheckLoop().ContinueWith(_ => {});
+                this.CheckLoop().ContinueWith(_ => { });
             }
         }
 
+        /// <summary>
+        /// 停止
+        /// </summary>
+        /// <remarks>
+        /// 再生位置など全てリセットされます。
+        /// </remarks>
         public void Stop()
         {
             // 再生フラグを下ろす
@@ -125,21 +190,30 @@ namespace InteractiveMusic
             this.ResetParam();
         }
 
+        /// <summary>
+        /// ループデータを設定
+        /// </summary>
+        /// <param name="superLoopDataArray">ループデータの二次元配列</param>
         public void SetupSuperLoopData(SuperLoopData[][] superLoopDataArray)
         {
-            this.SuperLoopDataList.Clear();
+            this.superLoopDataList.Clear();
             foreach (var array in superLoopDataArray)
             {
-                this.SuperLoopDataList.Add(array);
+                this.superLoopDataList.Add(array);
             }
-            this.normalLoopData = this.SuperLoopDataList[0][0];
-            this.normalLoopList = this.SuperLoopDataList.SelectMany(v => v)
-                                                        .Where(v => !v.hasTransPart)
+
+            this.normalLoopData = this.superLoopDataList[0][0];
+            this.normalLoopList = this.superLoopDataList.SelectMany(v => v)
+                                                        .Where(v => !v.HasTransPart)
                                                         .ToList();
             Debug.Log(this.normalLoopList.Count());
             Debug.LogFormat("STFL: {0} ETFL: {1}", this.normalLoopData.StartTimeFromLoop, this.normalLoopData.EndTimeFromLoop);
         }
 
+        /// <summary>
+        /// ループ切り替え
+        /// </summary>
+        /// <param name="loopId">切り替え先のループID</param>
         public void ChangeLoop(int loopId)
         {
             Assert.IsTrue(loopId >= -1);
@@ -153,6 +227,10 @@ namespace InteractiveMusic
             }
         }
 
+        /// <summary>
+        /// ループチェック処理
+        /// </summary>
+        /// <returns>処理</returns>
         private async Task CheckLoop()
         {
             while (this.isPlaying)
@@ -172,7 +250,7 @@ namespace InteractiveMusic
                     {
                         Debug.LogFormat("Change: {0} -> {1}", this.currentLoopId, this.nextLoopId);
                         Debug.LogFormat("NowTime: {0}", this.Source.time);
-                        var superLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
+                        var superLoopDatas = this.superLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
                                                                                        .Where(x => x.StartTimeFromLoop <= this.Source.time && this.Source.time <= x.EndTimeFromLoop);
                         if (superLoopDatas.Any())
                         {
@@ -188,7 +266,7 @@ namespace InteractiveMusic
                             // WIP: STFL〜ETFLのどちらに近いかを見て、近い方の値を利用→データの近傍を取得していないため抜けを参照する可能性がまだある
                             float vicinityTime1 = 0.0f;
                             float vicinityTime2 = 0.0f;
-                            if ((this.normalLoopData.EndTimeFromLoop - this.normalLoopData.StartTimeFromLoop / 2) - this.Source.time >= 0.0f)
+                            if ((this.normalLoopData.EndTimeFromLoop - (this.normalLoopData.StartTimeFromLoop / 2)) - this.Source.time >= 0.0f)
                             {
                                 vicinityTime1 = this.normalLoopData.StartTimeFromLoop;
                                 vicinityTime2 = this.normalLoopData.EndTimeFromLoop;
@@ -200,7 +278,7 @@ namespace InteractiveMusic
                                 this.needOneLoop = true;
                             }
 
-                            IEnumerable<SuperLoopData> vicinityLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
+                            IEnumerable<SuperLoopData> vicinityLoopDatas = this.superLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
                                                                                                                      .Where(x => x.StartTimeFromLoop <= vicinityTime1 && vicinityTime1 <= x.EndTimeFromLoop);
                             if (vicinityLoopDatas.Any())
                             {
@@ -214,7 +292,7 @@ namespace InteractiveMusic
                             else
                             {
                                 // 第一近傍に見つからなかったので、第二
-                                vicinityLoopDatas = this.SuperLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
+                                vicinityLoopDatas = this.superLoopDataList[this.currentLoopId].Where(x => x.NextLoopId == this.nextLoopId)
                                                                                               .Where(x => x.StartTimeFromLoop <= vicinityTime2 && vicinityTime2 <= x.EndTimeFromLoop);
                                 if (vicinityLoopDatas.Any())
                                 {
@@ -284,11 +362,17 @@ namespace InteractiveMusic
             }
         }
 
+        /// <summary>
+        /// オーディオソースヌルチェック
+        /// </summary>
         private void CheckRegisterSource()
         {
             Assert.IsNotNull(this.Source);
         }
 
+        /// <summary>
+        /// パラメーターリセット
+        /// </summary>
         private void ResetParam()
         {
             // 各パラメーターリセット
@@ -299,16 +383,56 @@ namespace InteractiveMusic
             this.isTransPart = false;
         }
 
+        /// <summary>
+        /// ループデータ
+        /// </summary>
         public struct SuperLoopData
         {
+            /// <summary>
+            /// 次のループID
+            /// </summary>
             public int NextLoopId;
-            public float StartTimeFromLoop;
-            public float EndTimeFromLoop;
-            public float StartTimeAtTarnsPart;
-            public float EndTimeAtTransPart;
-            public float DestinationTime;
-            public bool hasTransPart;
 
+            /// <summary>
+            /// ループ開始時間（STFL）
+            /// </summary>
+            public float StartTimeFromLoop;
+
+            /// <summary>
+            /// ループ終了時間（ETFL）
+            /// </summary>
+            public float EndTimeFromLoop;
+
+            /// <summary>
+            /// 遷移パート開始時間（STATP）
+            /// </summary>
+            public float StartTimeAtTarnsPart;
+
+            /// <summary>
+            /// 遷移パート終了時間（ETATP）
+            /// </summary>
+            public float EndTimeAtTransPart;
+
+            /// <summary>
+            /// 遷移先時間
+            /// </summary>
+            public float DestinationTime;
+
+            /// <summary>
+            /// 遷移パートがあるかどうか
+            /// </summary>
+            public bool HasTransPart;
+
+            /// <summary>
+            /// コンストラクタ
+            /// </summary>
+            /// <param name="nli">次のループID</param>
+            /// <param name="stfl">STFL</param>
+            /// <param name="etfl">ETFL</param>
+            /// <param name="statp">STATP</param>
+            /// <param name="etatp">ETATP</param>
+            /// <param name="dt">遷移先時間</param>
+            /// <param name="htp">遷移パートがあるかどうか</param>
             public SuperLoopData(int nli, float stfl, float etfl, float statp, float etatp, float dt, bool htp)
             {
                 this.NextLoopId = nli;
@@ -317,24 +441,31 @@ namespace InteractiveMusic
                 this.StartTimeAtTarnsPart = statp;
                 this.EndTimeAtTransPart = etatp;
                 this.DestinationTime = dt;
-                this.hasTransPart = htp;
+                this.HasTransPart = htp;
             }
 
+            /// <summary>
+            /// 文字列化
+            /// </summary>
+            /// <returns>文字列</returns>
             public override string ToString()
             {
-                if (!hasTransPart)
+                if (!HasTransPart)
                 {
                     return string.Format(
                         "ループ開始: {0} 〜 ループ終了: {1}",
-                        this.StartTimeFromLoop, this.EndTimeFromLoop
-                    );
+                        this.StartTimeFromLoop,
+                        this.EndTimeFromLoop);
                 }
                 else
                 {
                     return string.Format(
                         "ここから: {0} ここまで: {1} ならば {1} になったら\n {2} 〜 {3} を再生して {4} へ",
-                        this.StartTimeFromLoop, this.EndTimeFromLoop, this.StartTimeAtTarnsPart, this.EndTimeAtTransPart, this.DestinationTime
-                    );
+                        this.StartTimeFromLoop,
+                        this.EndTimeFromLoop,
+                        this.StartTimeAtTarnsPart,
+                        this.EndTimeAtTransPart,
+                        this.DestinationTime);
                 }
             }
         }
