@@ -60,6 +60,39 @@ namespace InteractiveMusic
             this.Stop();
         }
 
+        public bool GetStatus(out bool duringTrans, out bool isTransPart, out SuperLoopData nowLoopData)
+        {
+            if (!this.isPlaying)
+            {
+                duringTrans = false;
+                isTransPart = false;
+                nowLoopData = default(SuperLoopData);
+                return false;
+            }
+            else
+            {
+                duringTrans = this.duringTrans;
+                isTransPart = this.isTransPart;
+                if (!this.duringTrans && !isTransPart)
+                {
+                    nowLoopData = this.normalLoopData;
+                }
+                else
+                {
+                    if (this.tempSuperLoopData.HasValue)
+                    {
+                        nowLoopData = this.tempSuperLoopData.Value;
+                    }
+                    else
+                    {
+                        nowLoopData = this.normalLoopData;
+                    }
+                }
+
+                return true;
+            }
+        }
+
         public void Play()
         {
             this.CheckRegisterSource();
@@ -70,24 +103,26 @@ namespace InteractiveMusic
 
             if (!beforeIsPlaying)
             {
-                this.currentLoopId = 0;
-                this.nextLoopId = 0;
+                this.ResetParam();
+                this.normalLoopData = normalLoopList[0];
 
-                this.CheckLoop();
+                this.CheckLoop().ContinueWith(_ => {});
             }
         }
 
         public void Stop()
         {
+            // 再生フラグを下ろす
             this.isPlaying = false;
-            this.currentLoopId = 0;
-            this.nextLoopId = 0;
 
+            // ソース停止処理
             if (this.Source != null)
             {
                 this.Source.Stop();
                 this.Source.time = 0.0f;
             }
+
+            this.ResetParam();
         }
 
         public void SetupSuperLoopData(SuperLoopData[][] superLoopDataArray)
@@ -240,6 +275,7 @@ namespace InteractiveMusic
                         this.isTransPart = false;
                         this.normalLoopData = this.normalLoopList[this.currentLoopId];
                         this.Source.time = this.tempSuperLoopData.Value.DestinationTime;
+                        this.tempSuperLoopData = null;
                         Debug.LogFormat("STFL: {0} ETFL: {1}", this.normalLoopData.StartTimeFromLoop, this.normalLoopData.EndTimeFromLoop);
                     }
                 }
@@ -251,6 +287,16 @@ namespace InteractiveMusic
         private void CheckRegisterSource()
         {
             Assert.IsNotNull(this.Source);
+        }
+
+        private void ResetParam()
+        {
+            // 各パラメーターリセット
+            this.currentLoopId = 0;
+            this.nextLoopId = 0;
+            this.needOneLoop = false;
+            this.duringTrans = false;
+            this.isTransPart = false;
         }
 
         public struct SuperLoopData
@@ -272,6 +318,24 @@ namespace InteractiveMusic
                 this.EndTimeAtTransPart = etatp;
                 this.DestinationTime = dt;
                 this.hasTransPart = htp;
+            }
+
+            public override string ToString()
+            {
+                if (!hasTransPart)
+                {
+                    return string.Format(
+                        "ループ開始: {0} 〜 ループ終了: {1}",
+                        this.StartTimeFromLoop, this.EndTimeFromLoop
+                    );
+                }
+                else
+                {
+                    return string.Format(
+                        "ここから: {0} ここまで: {1} ならば {1} になったら\n {2} 〜 {3} を再生して {4} へ",
+                        this.StartTimeFromLoop, this.EndTimeFromLoop, this.StartTimeAtTarnsPart, this.EndTimeAtTransPart, this.DestinationTime
+                    );
+                }
             }
         }
     }
