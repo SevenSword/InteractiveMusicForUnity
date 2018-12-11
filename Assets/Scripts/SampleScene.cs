@@ -3,38 +3,58 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class SampleScene : MonoBehaviour {
 
     [SerializeField]
-    private AudioSource audioSource;
+    private AudioSource[] audioSource;
 
-    enum LoopType
+    [SerializeField]
+    private Text time;
+
+    [SerializeField]
+    private Text status;
+
+    public void Awake()
     {
-        AllLoop = -1,
-        Intro1,
-        Intro2,
-        Verse1_1,
-        Verse1_2,
-        Verse2_1,
-        Verse2_2,
-        Chorus
+        // 30fps固定でもループ問題ないか検証する目的
+        Application.targetFrameRate = 30;
     }
 
-    public void Start()
+    public void Update()
     {
-        InteractiveLoopManager.Instance.Source = this.audioSource;
+        this.time.text = InteractiveLoopManager.Instance.NowTime.ToString();
 
-        // ループデータ設定
-        InteractiveLoopManager.Instance.SetupLoopData(new [] {
-            new InteractiveLoopManager.LoopData(0.0f, 14.45f),
-            new InteractiveLoopManager.LoopData(14.45f, 29.073f),
-            new InteractiveLoopManager.LoopData(29.073f, 43.524f),
-            new InteractiveLoopManager.LoopData(43.524f, 58.1476f),
-            new InteractiveLoopManager.LoopData(58.1476f, 72.4046f),
-            new InteractiveLoopManager.LoopData(72.6046f, 87.2216f),
-            new InteractiveLoopManager.LoopData(87.2216f, 101.691f)
-        });
+        bool duringTrans, isTransPart;
+        InteractiveLoopManager.SuperLoopData superLoopData;
+        if (InteractiveLoopManager.Instance.GetStatus(out duringTrans, out isTransPart, out superLoopData))
+        {
+            string formatText = "{0}:\n{1}";
+            string text = string.Empty;
+
+            if (!duringTrans && !isTransPart)
+            {
+                text = string.Format(formatText, "ループパート", superLoopData.ToString());
+            }
+            else
+            {
+                if (duringTrans)
+                {
+                    text = string.Format(formatText, "ループパート;遷移待機中", superLoopData.ToString());
+                }
+                if (isTransPart)
+                {
+                    text = string.Format(formatText, "遷移パート", superLoopData.ToString());
+                }
+            }
+
+            this.status.text = text;
+        }
+        else
+        {
+            this.status.text = "停止中";
+        }
     }
 
     public void OnDestroy()
@@ -42,13 +62,27 @@ public class SampleScene : MonoBehaviour {
         InteractiveLoopManager.Instance.Dispose();
     }
 
-    public void OnClick(int id)
+    public void OnChangeBGM(int id)
     {
-        var type = (LoopType)id;
-        Debug.LogFormat("LoopType: {0}", type);
+        InteractiveLoopManager.Instance.Source = this.audioSource[id];
+        Debug.Log(this.audioSource[id].clip.length);
+        InteractiveLoopManager.Instance.SetupSuperLoopData(SampleLoopData.SuperSample(id));
+    }
 
-        InteractiveLoopManager.Instance.ChangeLoop(id);
+    public void OnChangeLoop(int id)
+    {
+        if (id == 0)
+        {
+            InteractiveLoopManager.Instance.Play();
+        }
+        else
+        {
+            InteractiveLoopManager.Instance.ChangeLoop(id);
+        }
+    }
 
-        InteractiveLoopManager.Instance.Play();
+    public void OnStop()
+    {
+        InteractiveLoopManager.Instance.Stop();
     }
 }
